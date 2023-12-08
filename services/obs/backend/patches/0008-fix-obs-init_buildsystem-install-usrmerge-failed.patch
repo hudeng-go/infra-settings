@@ -1,0 +1,30 @@
+From bb8645ece8f18ea93106ccfe02964c4bd8a60cc2 Mon Sep 17 00:00:00 2001
+From: hudeng <hudeng@deepin.org>
+Date: Fri, 8 Dec 2023 13:45:29 +0000
+Subject: [PATCH] fix: obs init_buildsystem install usrmerge failed
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+obs的init_buildsystem在preinstall节阶段安装usrmerge可能会破坏调构建环境,因此只能在正式的install阶段
+去安装;但是安装的优先级比较高,否则安装顺序不对会导致systemd等包安装失败,因此强制其第一个安装
+---
+ init_buildsystem | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/init_buildsystem b/init_buildsystem
+index 5f4783d..d2123a9 100755
+--- a/init_buildsystem
++++ b/init_buildsystem
+@@ -1089,6 +1089,9 @@ if test -n "$PACKAGES_TO_SYSROOTINSTALL" ; then
+ fi
+
+ MAIN_LIST="$PACKAGES_TO_INSTALL"
++if test "$PSUF" = deb; then
++    MAIN_LIST="usrmerge $MAIN_LIST"
++fi
+ progress_setup MAIN_LIST
+ for PKG in $MAIN_LIST ; do
+     test -f $BUILD_ROOT/installed-pkg/$PKG && continue
+--
+2.35.3
