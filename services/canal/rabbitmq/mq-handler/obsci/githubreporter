@@ -21,7 +21,8 @@ rabbitmq_queue = os.environ.get('rabbitmq_queue')
 
 # 创建RabbitMQ连接
 credentials = pika.PlainCredentials(rabbitmq_username, rabbitmq_password)
-parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
+parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials,
+                heartbeat=0, connection_attempts=3, socket_timeout=300)
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
@@ -143,7 +144,6 @@ def callback(ch, method, properties, body):
                             print("Failed to get sha with head: " + head)
                     else:
                         print(f"Failed to get {url}'s head with response {data}")
-
                         print(response.text)
             if "deepin:stable" in project and "Event::BuildSuccess" in event_data_type:
                 url = f"https://build.deepin.com/source/{project}/{package}/_meta"
