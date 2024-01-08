@@ -26,6 +26,7 @@ parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, c
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
+obs_host = os.environ.get('OBSHOST')
 obs_username = os.environ.get('OSCUSER')
 obs_password = os.environ.get('OSCPASS')
 github_integration_repo = os.environ.get('GITHUB_INTEGRATION_REPO', "peeweep-test/Repository-Integration")
@@ -59,7 +60,7 @@ def callback(ch, method, properties, body):
                 if "PR-" in project or "topics:" in project:
                     print(f"Handle {project}/{package} {arch} build event: {event_data_type}")
                     # https://build.deepin.com/source/deepin:CI:peeweep-test:iptsd:PR-12/iptsd/_branch_request
-                    url = f"https://build.deepin.com/source/{project}/{package}/_branch_request"
+                    url = f"{obs_host}/source/{project}/{package}/_branch_request"
                     response = requests.get(url, auth=HTTPBasicAuth(obs_username, obs_password))
                     if response.status_code == 200:
                         content = response.text
@@ -85,7 +86,7 @@ def callback(ch, method, properties, body):
                                         if event_data_type == "Event::BuildFail":
                                             status = "failure"
                                         context = f"OBS: {repository}/{arch}"
-                                        target_url = f"https://build.deepin.com/package/live_build_log/{project}/{package}/{repository}/{arch}"
+                                        target_url = f"{obs_host}/package/live_build_log/{project}/{package}/{repository}/{arch}"
                                         data = {
                                             "state": status,
                                             "context": context,
@@ -128,7 +129,7 @@ def callback(ch, method, properties, body):
                             if event_data_type == "Event::BuildFail":
                                 status = "failure"
                             context = f"{package} {arch} testing repository building"
-                            target_url = f"https://build.deepin.com/package/live_build_log/{project}/{package}/{repository}/{arch}"
+                            target_url = f"{obs_host}/package/live_build_log/{project}/{package}/{repository}/{arch}"
                             data = {
                                 "state": status,
                                 "context": context,
@@ -145,17 +146,17 @@ def callback(ch, method, properties, body):
                     else:
                         print(f"Failed to get {url}'s head with response {data}")
                         print(response.text)
-            if "deepin:stable" in project and "Event::BuildSuccess" in event_data_type:
-                url = f"https://build.deepin.com/source/{project}/{package}/_meta"
-                response = requests.get(url, auth=HTTPBasicAuth(obs_username, obs_password))
-                if response.status_code == 200:
-                    content = response.text
-                    root = ET.fromstring(content)
-                    build_tag = root.find('build')
-                    new_disable = ET.Element('disable', {'arch': arch, 'repository': 'stable'})
-                    build_tag.append(new_disable)
-                    xml_string = ET.tostring(root, encoding="utf-8").decode("utf-8")
-                    res = requests.put(url, auth=HTTPBasicAuth(obs_username, obs_password), data=xml_string)
+            #if "deepin:stable" in project and "Event::BuildSuccess" in event_data_type:
+            #    url = f"{obs_host}/source/{project}/{package}/_meta"
+            #    response = requests.get(url, auth=HTTPBasicAuth(obs_username, obs_password))
+            #    if response.status_code == 200:
+            #        content = response.text
+            #        root = ET.fromstring(content)
+            #        build_tag = root.find('build')
+            #        new_disable = ET.Element('disable', {'arch': arch, 'repository': 'stable'})
+            #        build_tag.append(new_disable)
+            #        xml_string = ET.tostring(root, encoding="utf-8").decode("utf-8")
+            #        res = requests.put(url, auth=HTTPBasicAuth(obs_username, obs_password), data=xml_string)
 
 # 开始消费队列中的消息
 channel.basic_consume(queue=rabbitmq_queue, on_message_callback=callback, auto_ack=True)
